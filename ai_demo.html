@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini AI Chatbot Demo 🚀</title>
+    <style>
+        /* --- MODERN CHATBOT STYLING --- */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        
+        .chat-container { width: 100%; max-width: 450px; height: 80vh; background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* Chat Header */
+        .chat-header { background: #3498db; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 1.2em; border-bottom: 1px solid #ddd; }
+        .security-note { font-size: 0.8em; opacity: 0.8; font-weight: normal; }
+
+        /* API Key input area (Hidden after use) */
+        #apiKeyContainer { padding: 10px; border-bottom: 1px solid #eee; background: #fafafa; display: flex; gap: 5px; }
+        #apiKey { flex: 1; padding: 8px; border-radius: 5px; border: 1px solid #ddd; font-size: 0.9em; }
+        
+        /* The Scrollable Chat Window */
+        #chatWindow { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; background: #fdfdfd; }
+        
+        /* Message Bubbles */
+        .message { max-width: 75%; padding: 10px 15px; border-radius: 15px; font-size: 0.95em; line-height: 1.4; position: relative; word-wrap: break-word; }
+        .user { align-self: flex-end; background-color: #3498db; color: white; border-bottom-right-radius: 2px; }
+        .ai { align-self: flex-start; background-color: #e8f4fd; color: #333; border-bottom-left-radius: 2px; border: 1px solid #d0e8f8; }
+        .error { align-self: center; background-color: #f8d7da; color: #721c24; border-radius: 5px; font-size: 0.8em; }
+
+        /* Message status (Thinking...) */
+        .status { font-style: italic; color: #888; font-size: 0.8em; align-self: flex-start; margin-left: 15px; }
+
+        /* Input Area at the bottom */
+        .input-area { padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; background: white; }
+        #userInput { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #ddd; outline: none; }
+        #sendBtn { background: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 25px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        #sendBtn:hover { background: #2980b9; }
+        #sendBtn:disabled { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        <div>AI Classmate ✨</div>
+        <div class="security-note">Powered by Gemini 3 Flash</div>
+    </div>
+    
+    <div id="apiKeyContainer">
+        <input type="password" id="apiKey" placeholder="Paste your Secret Key first...">
+    </div>
+    
+    <div id="chatWindow">
+        <div class="message ai">Hello! Enter your secret key at the top, and then ask me anything! I'm here to help you learn. 🧠</div>
+    </div>
+    
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="Ask a question..." onkeypress="handleKeyPress(event)">
+        <button id="sendBtn" onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    // Handle 'Enter' key press
+    function handleKeyPress(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    }
+
+    async function sendMessage() {
+        const key = document.getElementById('apiKey').value;
+        const input = document.getElementById('userInput');
+        const prompt = input.value;
+        const chatWindow = document.getElementById('chatWindow');
+        const sendBtn = document.getElementById('sendBtn');
+        const keyContainer = document.getElementById('apiKeyContainer');
+
+        if (!key) return alert("Please paste your Secret Key in the top box first!");
+        if (!prompt) return;
+
+        // Hide key container after successful first send to focus on chat
+        keyContainer.style.display = 'none';
+
+        // 1. Add User Message
+        chatWindow.innerHTML += `<div class="message user">${prompt}</div>`;
+        input.value = ""; // Clear input
+        sendBtn.disabled = true; // Disable button while thinking
+        
+        // Auto-scroll to bottom
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+
+        // 2. Add 'Thinking...' status
+        const statusId = 'status-' + Date.now();
+        chatWindow.innerHTML += `<div class="status" id="${statusId}">Thinking... 🧠</div>`;
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+
+        try {
+            // Updated April 2026 URL for Gemini 3 Flash and v1beta endpoint
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${key}`;
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+
+            const data = await response.json();
+            
+            // Remove 'Thinking...'
+            document.getElementById(statusId).remove();
+
+            if (data.error) {
+                // Add Error Message
+                chatWindow.innerHTML += `<div class="message error">Error: ${data.error.message}</div>`;
+            } else {
+                // Add AI Message
+                const aiText = data.candidates[0].content.parts[0].text;
+                chatWindow.innerHTML += `<div class="message ai">${aiText}</div>`;
+            }
+        } catch (err) {
+            // Remove 'Thinking...'
+            document.getElementById(statusId).remove();
+            chatWindow.innerHTML += `<div class="message error">Connection failed: ${err.message}</div>`;
+        }
+
+        sendBtn.disabled = false; // Re-enable button
+        chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll again
+    }
+</script>
+
+</body>
+</html>
